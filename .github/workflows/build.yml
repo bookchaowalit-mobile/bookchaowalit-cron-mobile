@@ -5,31 +5,35 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  analyze:
-    name: Analyze & Test
+  build:
+    name: Install & Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v4
         with:
-          flutter-version: '3.24.x'
-          cache: true
-      - run: flutter pub get
-      - run: flutter analyze || true
-      - run: flutter test || true
+          node-version: 20
+      - run: npm install || true
+      - run: npx expo lint || true
+      - run: npx tsc --noEmit || true
 
-  build-android:
-    name: Build Android APK
-    needs: analyze
+  eas-build:
+    name: EAS Build (Preview)
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v4
         with:
-          flutter-version: '3.24.x'
-          cache: true
-      - run: flutter pub get
-      - run: flutter build apk --debug || true
+          node-version: 20
+      - run: npm install || true
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Build Android Preview
+        run: eas build --platform android --profile preview --non-interactive || echo "EAS credentials not configured"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
