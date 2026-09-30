@@ -67,7 +67,12 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('lays out at 200% text scale without overflow', (tester) async {
+  testWidgets('lays out at 200% text scale on a phone without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(home(textScale: 2));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

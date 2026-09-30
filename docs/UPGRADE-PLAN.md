@@ -27,6 +27,7 @@ Score: 7.5/10 — core feature with edge-case-tested pure-Dart logic, a11y guide
 - Edge-case unit tests: hex/sign input, unknown macros, malformed lists/ranges, Sunday-as-7 in ranges, month/year/leap rollover, `count: 0`, empty `compressRanges`. (DST spring-forward was probed under `TZ=America/New_York`: no loop.)
 - Accessibility: description is a live region; example chips have tooltips; widget tests assert `androidTapTargetGuideline`, `labeledTapTargetGuideline`, `textContrastGuideline` and a 200% text-scale layout.
 - Widget tests for example chips, empty-input error and the "never fires" state.
+- The 200% text-scale widget test now runs at a 360 px phone width (it previously used the 800 px default test surface); no overflow found.
 
 ## Done in pass 2
 
