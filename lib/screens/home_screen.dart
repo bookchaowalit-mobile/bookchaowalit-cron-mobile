@@ -68,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
               for (final example in _examples)
                 ActionChip(
                   label: Text(example),
+                  tooltip: 'Use example $example',
                   onPressed: () => setState(() => _controller.text = example),
                 ),
             ],
@@ -76,10 +77,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             Text('Meaning', style: textTheme.titleMedium),
             const SizedBox(height: 4),
-            Text(
-              expression.describe(),
-              key: const Key('cron-description'),
-              style: textTheme.bodyLarge,
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                expression.describe(),
+                key: const Key('cron-description'),
+                style: textTheme.bodyLarge,
+              ),
             ),
             const SizedBox(height: 24),
             Text('Next runs', style: textTheme.titleMedium),

@@ -94,8 +94,10 @@ class CronExpression {
   Set<int> get months => Set.unmodifiable(_values[3]);
   Set<int> get daysOfWeek => Set.unmodifiable(_values[4]);
 
-  bool get _domRestricted => _raw[2] != '*';
-  bool get _dowRestricted => _raw[4] != '*';
+  // crontab(5): a day field is "restricted" unless it starts with `*`, so
+  // `*/2` in day-of-month is still AND-ed with day-of-week (Vixie cron).
+  bool get _domRestricted => !_raw[2].startsWith('*');
+  bool get _dowRestricted => !_raw[4].startsWith('*');
 
   static Set<int> _parseField(String field, _FieldSpec spec) {
     if (field.isEmpty) {
@@ -111,7 +113,7 @@ class CronExpression {
       final slash = part.indexOf('/');
       if (slash != -1) {
         rangePart = part.substring(0, slash);
-        final parsedStep = int.tryParse(part.substring(slash + 1));
+        final parsedStep = _parseDecimal(part.substring(slash + 1));
         if (parsedStep == null || parsedStep < 1) {
           throw CronFormatException('Invalid step "$part" in ${spec.name}.');
         }
@@ -147,7 +149,7 @@ class CronExpression {
 
   static int _parseValue(String token, _FieldSpec spec) {
     final named = spec.names[token];
-    final value = named ?? int.tryParse(token);
+    final value = named ?? _parseDecimal(token);
     if (value == null) {
       throw CronFormatException('"$token" is not valid in ${spec.name}.');
     }
@@ -159,6 +161,11 @@ class CronExpression {
     }
     return value;
   }
+
+  /// Plain decimal digits only: `int.tryParse` would also accept `+5`,
+  /// `0x1F` and other forms that cron itself rejects.
+  static int? _parseDecimal(String token) =>
+      RegExp(r'^[0-9]{1,4}$').hasMatch(token) ? int.parse(token) : null;
 
   bool _dayMatches(DateTime t) {
     final dom = _values[2].contains(t.day);
@@ -213,27 +220,30 @@ class CronExpression {
       if (minuteRaw == '*') {
         buffer.write('Every minute');
       } else if (minuteRaw.startsWith('*/')) {
-        buffer.write('Every ${minuteRaw.substring(2)} minutes');
+        buffer.write(_every(minuteRaw.substring(2), 'minute'));
       } else {
         buffer.write('At minute ${compressRanges(mins)}');
       }
       if (hourRaw.startsWith('*/')) {
-        buffer.write(', every ${hourRaw.substring(2)} hours');
+        buffer.write(', ${_every(hourRaw.substring(2), 'hour').toLowerCase()}');
       } else if (hourRaw != '*') {
         buffer.write(', during hour ${compressRanges(hrs)}');
       }
     }
     final dayParts = <String>[];
-    if (_domRestricted) {
+    if (_raw[2] != '*') {
       dayParts
           .add('on day ${compressRanges(_sorted(_values[2]))} of the month');
     }
-    if (_dowRestricted) {
+    if (_raw[4] != '*') {
       dayParts.add(
         'on ${compressRanges(_sorted(_values[4]), (d) => dayLabels[d])}',
       );
     }
-    if (dayParts.isNotEmpty) buffer.write(', ${dayParts.join(' or ')}');
+    if (dayParts.isNotEmpty) {
+      final joiner = _domRestricted && _dowRestricted ? ' or ' : ' and ';
+      buffer.write(', ${dayParts.join(joiner)}');
+    }
     if (_raw[3] != '*') {
       buffer.write(
         ', in ${compressRanges(_sorted(_values[3]), (m) => monthLabels[m - 1])}',
@@ -241,6 +251,9 @@ class CronExpression {
     }
     return buffer.toString();
   }
+
+  static String _every(String step, String unit) =>
+      step == '1' ? 'Every $unit' : 'Every $step ${unit}s';
 
   static List<int> _sorted(Set<int> values) => values.toList()..sort();
 
