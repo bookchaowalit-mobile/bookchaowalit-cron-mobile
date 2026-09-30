@@ -1,4 +1,4 @@
-name: Build Mobile App
+name: Validate Flutter Mobile App
 
 on:
   push:
@@ -7,33 +7,45 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Install & Lint
+  validate:
+    name: Analyze & Test (fail-closed)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 20
-      - run: npm install || true
-      - run: npx expo lint || true
-      - run: npx tsc --noEmit || true
+          flutter-version: '3.47.5'
+          channel: 'stable'
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
 
-  eas-build:
-    name: EAS Build (Preview)
-    needs: build
+  build-android-debug:
+    name: Debug APK (main only)
+    needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 20
-      - run: npm install || true
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-      - name: Build Android Preview
-        run: eas build --platform android --profile preview --non-interactive || echo "EAS credentials not configured"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          flutter-version: '3.47.5'
+          channel: 'stable'
+          cache: true
+      - run: flutter pub get
+      - name: Build debug APK
+        run: flutter build apk --debug
