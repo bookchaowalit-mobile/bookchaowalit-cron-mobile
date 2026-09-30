@@ -41,7 +41,19 @@ and fails closed; a debug APK is built on pushes to `main`.
 flutter build apk --debug
 ```
 
-Release signing is not configured yet (see `docs/UPGRADE-PLAN.md`).
+Release builds (`flutter build apk --release` / `appbundle`) fail on purpose
+until signing is configured; they never fall back to the debug key. To sign,
+create an upload keystore outside the repo and add the ignored
+`android/key.properties`:
+
+```properties
+storePassword=...
+keyPassword=...
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks
+```
+
+Never commit `key.properties` or keystores (both are git-ignored).
 
 ## Related
 
